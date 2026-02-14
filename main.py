@@ -1,33 +1,57 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from uuid import uuid4
+from fastapi import FastAPI, HTTPException
+from .models import Asset, Vulnerability, Playbook, Incident, SecretItem
+from . import storage
+from typing import List
 
-class Asset(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
-    ip: Optional[str] = None
-    tags: List[str] = []
+app = FastAPI(title="Cyber Work Tools API")
 
-class Vulnerability(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    asset_id: str
-    title: str
-    severity: str = "medium"
-    description: Optional[str] = None
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-class Playbook(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
-    steps: List[str] = []
+# Assets
+@app.post("/assets", response_model=Asset)
+def create_asset(a: Asset):
+    return storage.add_asset(a)
 
-class Incident(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    title: str
-    description: Optional[str] = None
-    status: str = "open"
+@app.get("/assets", response_model=List[Asset])
+def get_assets():
+    return storage.list_assets()
 
-class SecretItem(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
-    value: str
-    description: Optional[str] = None
+# Vulnerabilities
+@app.post("/vulns", response_model=Vulnerability)
+def create_vuln(v: Vulnerability):
+    if not storage.get_asset(v.asset_id):
+        raise HTTPException(status_code=400, detail="Asset not found")
+    return storage.add_vuln(v)
+
+@app.get("/vulns", response_model=List[Vulnerability])
+def get_vulns():
+    return storage.list_vulns()
+
+# Playbooks
+@app.post("/playbooks", response_model=Playbook)
+def create_playbook(p: Playbook):
+    return storage.add_playbook(p)
+
+@app.get("/playbooks", response_model=List[Playbook])
+def get_playbooks():
+    return storage.list_playbooks()
+
+# Incidents
+@app.post("/incidents", response_model=Incident)
+def create_incident(i: Incident):
+    return storage.add_incident(i)
+
+@app.get("/incidents", response_model=List[Incident])
+def get_incidents():
+    return storage.list_incidents()
+
+# Secrets (demo)
+@app.post("/secrets", response_model=SecretItem)
+def create_secret(s: SecretItem):
+    return storage.add_secret(s)
+
+@app.get("/secrets", response_model=List[SecretItem])
+def get_secrets():
+    return storage.list_secrets()
